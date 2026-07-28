@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({
     origin: [
         "http://localhost:5173",
-        "https://mockmate-ai-powered-mock-interview-xm4m.onrender.com/"
+        "https://mockmate-ai-powered-mock-interview-xm4m.onrender.com"
     ],
     credentials: true
 }));
@@ -26,7 +26,7 @@ app.use(cookieParser());
 
 const PORT = process.env.PORT || 6000
 
-app.use('/', (req , res)=>{
+app.get('/', (req , res)=>{
     res.send("server started");
 })
 
