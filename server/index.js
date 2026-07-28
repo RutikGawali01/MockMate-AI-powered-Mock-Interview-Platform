@@ -13,10 +13,12 @@ const app = express();
 // Middleware to get request  on only frontend with url http://localhost:5173 and allow credentials like cookies
 app.use(cors({
     origin: [
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://mockmate-ai-powered-mock-interview-xm4m.onrender.com/"
     ],
     credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
