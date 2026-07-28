@@ -20,7 +20,6 @@ const Auth = ({ isModel = false }) => {
             let name = user.displayName;
             const result = await axios.post(ServerURL + '/api/auth/google', { email, name }, { withCredentials: true });
             dispatch(setUserData(result.data.user));
-            console.log(result.data);
 
         } catch (err) {
     console.error("Full Error:", err);

@@ -235,7 +235,7 @@ const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
         { withCredentials: true }
       );
 
-      console.log("API Response:", result.data);
+      // console.log("API Response:", result.data);
 
       if (!result.data) {
         console.error("Report missing in response");

@@ -36,7 +36,7 @@ const Step1SetUp = ({ onStart }) => {
         mode,
         resumeText
       }, { withCredentials: true });
-      console.log(result);
+      // console.log(result);
       if (userData) {
         dispatch(setUserData({ ...userData, credits: result.data.creditsLeft }));
         setLoading(false);
@@ -56,7 +56,7 @@ const Step1SetUp = ({ onStart }) => {
       const response = await axios.post(ServerURL + "/api/interview/upload", formData,
         { withCredentials: true }
       );
-      console.log(response);
+      // console.log(response);
       setRole(response.data.role || " ");
       setExperience(response.data.experience || " ");
 
