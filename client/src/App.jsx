@@ -19,17 +19,19 @@ const App = () => {
 
     const getUser = async () => {
       try {
-        const responce = await axios.get(ServerURL + "/api/user/current-user", {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-          withCredentials: "true"
+        const responce = await axios.get(ServerURL + "/api/user/current-user", {
+          headers,
+          withCredentials: true
         });
         dispatch(setUserData(responce.data));
         console.log(responce.data);
       }
       catch (err) {
         dispatch(setUserData(null));
-
-        console.log('user error' + err);
+        console.log('user error ' + err);
       }
     }
     getUser();

@@ -9,25 +9,37 @@ import { ServerURL } from '../App';
 import axios from 'axios';
 import { useDispatch } from 'react-redux';
 import { setUserData } from '../redux/userSlice.js';
+import { useNavigate } from 'react-router-dom';
+
 const Auth = ({ isModel = false }) => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const handleGoogleSignIn = async () => {
         try {
             const responce = await signInWithPopup(auth, provider);
             let user = responce.user;
+            let idToken = await user.getIdToken();
             let email = user.email;
             let name = user.displayName;
-            const result = await axios.post(ServerURL + '/api/auth/google', { email, name }, { withCredentials: true });
-            dispatch(setUserData(result.data.user));
+            const result = await axios.post(ServerURL + '/api/auth/google', { idToken, email, name }, { withCredentials: true });
 
+            if (result.data.token) {
+                localStorage.setItem("token", result.data.token);
+            }
+
+            dispatch(setUserData(result.data.user));
+            if (!isModel) {
+                navigate("/");
+            }
         } catch (err) {
-    console.error("Full Error:", err);
-    console.error("Code:", err.code);
-    console.error("Message:", err.message);
-    dispatch(setUserData(null));
-}
+            console.error("Full Error:", err);
+            console.error("Code:", err.code);
+            console.error("Message:", err.message);
+            dispatch(setUserData(null));
+        }
     }
+
 
 
 

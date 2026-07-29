@@ -11,13 +11,24 @@ import paymentRouter from './routes/payment.route.js';
 
 const app = express();
 // Middleware to get request  on only frontend with url http://localhost:5173 and allow credentials like cookies
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://mockmate-ai-powered-mock-interview-xm4m.onrender.com",
+    process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://mockmate-ai-powered-mock-interview-xm4m.onrender.com"
-    ],
-    credentials: true
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+            callback(null, true);
+        } else {
+            callback(new Error("CORS policy violation"));
+        }
+    },
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 
 app.use(express.json());
 app.use(cookieParser());

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import './utils/axiosConfig.js'
 
 //to use route we need to wrap our app in browser router
 import { BrowserRouter } from 'react-router-dom'
