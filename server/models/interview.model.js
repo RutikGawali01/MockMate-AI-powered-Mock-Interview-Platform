@@ -1,7 +1,6 @@
-import e from "express";
-import mongoodse from "mongoose";
+import mongoose from "mongoose";
 
-const questionSchema = new mongoodse.Schema({
+const questionSchema = new mongoose.Schema({
     question: { type: String },
     answer: { type: String },
     difficulty: { type: String },
@@ -11,17 +10,11 @@ const questionSchema = new mongoodse.Schema({
     confidence: { type: Number, default: 0 },
     communication: { type: Number, default: 0 },
     correctness: { type: Number, default: 0 },
-
-
 });
 
-
-
-
-const interviewSchema = new mongoodse.Schema({
-    userId:
-    {
-        type: mongoodse.Schema.Types.ObjectId,
+const interviewSchema = new mongoose.Schema({
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true
     },
@@ -48,6 +41,5 @@ const interviewSchema = new mongoodse.Schema({
     finalScore: { type: Number, default: 0 },
 }, { timestamps: true });
 
-
-const Interview = mongoodse.model("Interview", interviewSchema);
+const Interview = mongoose.model("Interview", interviewSchema);
 export default Interview;

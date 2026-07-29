@@ -5,7 +5,7 @@ import { motion } from 'motion/react'
 import { useState } from 'react'
 import { ServerURL } from '../App'
 import axios from "axios"
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { setUserData } from '../redux/userSlice'
 const Pricing = () => {
   const navigate = useNavigate();
@@ -61,9 +61,10 @@ const Pricing = () => {
 
   ]
 
+  const userData = useSelector((state) => state.user?.userData);
+
   const handlePayment = async (plan) => {
     try {
-
       setLoadingPlan(plan.id);
 
       const amount = Number(plan.price);
@@ -80,38 +81,44 @@ const Pricing = () => {
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: result.data.amount,
-        currency: "INR",
-        name: "InterviewIQ.AI",
-        description: `${plan.name}-${plan.credits} credits`,
+        currency: result.data.currency || "INR",
+        name: "Mock-mate",
+        description: `${plan.name} - ${plan.credits} credits`,
         order_id: result.data.id,
-
+        prefill: {
+          name: userData?.name || "",
+          email: userData?.email || "",
+        },
         handler: async function (response) {
-
-          const verifyPayment = await axios.post(ServerURL+"/api/payment/verify",
-            response
-            ,
-            { withCredentials: true }
-          )
-          dispatch(setUserData(verifyPayment.data.user));
-          alert("Payment Successful");
-          navigate("/");
-        }
-        ,
-
+          try {
+            const verifyPayment = await axios.post(
+              ServerURL + "/api/payment/verify",
+              response,
+              { withCredentials: true }
+            );
+            dispatch(setUserData(verifyPayment.data.user));
+            alert("Payment Successful!");
+            navigate("/");
+          } catch (error) {
+            console.error("Payment verification failed:", error);
+            alert("Payment verification failed. Please contact support.");
+          }
+        },
         theme: { color: "#10b981" }
-
-
-
-
       };
 
       const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (response) {
+        console.error("Payment failed:", response.error);
+        alert(`Payment Failed: ${response.error.description || response.error.reason || "Transaction cancelled"}`);
+      });
       rzp.open();
 
       setLoadingPlan(null);
 
     } catch (err) {
       console.log(err);
+      alert("Failed to initiate payment. Please try again.");
       setLoadingPlan(null);
     }
   };
