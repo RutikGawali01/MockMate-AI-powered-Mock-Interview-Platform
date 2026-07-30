@@ -39,6 +39,7 @@ const interviewSchema = new mongoose.Schema({
         default: "incompleted"
     },
     finalScore: { type: Number, default: 0 },
+    
 }, { timestamps: true });
 
 const Interview = mongoose.model("Interview", interviewSchema);

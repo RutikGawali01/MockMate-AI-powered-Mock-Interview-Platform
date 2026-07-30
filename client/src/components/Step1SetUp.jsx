@@ -47,18 +47,18 @@ const Step1SetUp = ({ onStart }) => {
     }
   }
 
-  const handleUploadResume = async () => {
-    if (!resumeFile || analysing) return;
+  const handleUploadResume = async (file) => {
+    const targetFile = file || resumeFile;
+    if (!targetFile || analysing) return;
     setAnalysing(true);
     const formData = new FormData();
-    formData.append("resume", resumeFile);
+    formData.append("resume", targetFile);
     try {
       const response = await axios.post(ServerURL + "/api/interview/upload", formData,
         { withCredentials: true }
       );
-      // console.log(response);
-      setRole(response.data.role || " ");
-      setExperience(response.data.experience || " ");
+      setRole(response.data.role || "");
+      setExperience(response.data.experience || "");
 
       setProjects(response.data.projects || []);
       setSkills(response.data.skills || []);
@@ -132,12 +132,14 @@ const Step1SetUp = ({ onStart }) => {
               <FaUserTie className='absolute top-4 left-4 text-gray-400' />
 
               <input type='text' placeholder='Enter Role '
+                value={role}
                 className='w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition'
                 onChange={(e) => setRole(e.target.value)} />
             </div>
             <div className='relative'>
               <FaBriefcase className='absolute top-4 left-4 text-gray-400' />
               <input type='text' placeholder='Experience (e.g. 2 years) '
+                value={experience}
                 className='w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition'
                 onChange={(e) => setExperience(e.target.value)} />
             </div>
@@ -150,32 +152,32 @@ const Step1SetUp = ({ onStart }) => {
             </select>
             {!analysisDone && (
               <motion.div
-                whileHover={{ scale: 1.03 }}
-                onClick={() => { document.getElementById("resumeUpload").click() }}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => { if (!analysing) document.getElementById("resumeUpload").click() }}
                 className='border border-dashed 
               border-gray-300 rounded-xl p-8
                text-center cursor-pointer
                hover:border-green-500 hover:bg-green-50 
-               transition'>
-                <FaFileUpload className='text-4xl mx-auto text-green-600' />
+               transition relative'>
+                <FaFileUpload className={`text-4xl mx-auto text-green-600 ${analysing ? 'animate-bounce' : ''}`} />
                 <input type='file' accept='application/pdf' id="resumeUpload"
-                  className=' hidden' onChange={(e) => { setResumeFile(e.target.files[0]) }} />
-                <p>{resumeFile ? resumeFile.name : "Click to Upload Resume"}</p>
-                {
-                  resumeFile && (
-                    <motion.button
-                      onClick={(e) => {
-                        //  e.stopPropagation(); clicks the button without triggering the parent div's onClick which opens file dialog again
-                        e.stopPropagation();
-                        handleUploadResume()
-                      }
-                      }
-                      whileHover={{ scale: 1.03 }}
-                      className='mt-4 bg-gray-900 text-white px-5 py-2 rounded-lg transition hover:bg-gray-800'>
-                      {analysing ? "Analysing..." : "analyze Resume"}
-                    </motion.button>
-                  )
-                }
+                  className='hidden'
+                  onChange={(e) => {
+                    const selectedFile = e.target.files[0];
+                    if (selectedFile) {
+                      setResumeFile(selectedFile);
+                      handleUploadResume(selectedFile);
+                    }
+                  }}
+                />
+                <p className='mt-2 text-gray-700 font-medium'>
+                  {analysing ? "Analyzing Resume with AI..." : resumeFile ? resumeFile.name : "Click to Upload Resume"}
+                </p>
+                {analysing && (
+                  <p className='text-xs text-green-600 mt-1 font-semibold animate-pulse'>
+                    Extracting Role, Experience & Skills...
+                  </p>
+                )}
               </motion.div>
             )}
             {analysisDone && (

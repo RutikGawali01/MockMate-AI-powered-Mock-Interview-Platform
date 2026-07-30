@@ -15,10 +15,13 @@ const Step2Interview = ({ interviewData, onFinish }) => {
   const [isIntroPhase, setIsIntroPhase] = useState(true);
   const [isMicOn, setIsMicOn] = useState(false);
   const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
+  const isStartingRef = useRef(false);
+  const [speechError, setSpeechError] = useState("");
   const [isAIPlaying, setIsAIPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answer, setAnswer] = useState("");
-const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
+  const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
   const [feedback, setFeedback] = useState("");
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,8 +29,6 @@ const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
   const [subtitle, setSubtitle] = useState("");
   const videoRef = useRef(null);
   const currentQuestion = questions[currentIndex];
-
-
 
   // load voices
   useEffect(() => {
@@ -146,45 +147,127 @@ const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
   }, [currentIndex, isIntroPhase, isSubmitting, timeLeft]);
 
   useEffect(() => {
-    if (!("webkitSpeechRecognition" in window)) {
-      console.error("Speech Recognition not supported");
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.error("Speech Recognition not supported in this browser");
+      setSpeechError("Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
       return;
     }
-    const recognition = new window.webkitSpeechRecognition();
+    const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
+    recognition.onstart = () => {
+      console.log("Recognition started");
+      isStartingRef.current = false;
+      isListeningRef.current = true;
+      setIsMicOn(true);
+      setSpeechError("");
+    };
+
+    recognition.onend = () => {
+      console.log("Recognition ended");
+      isStartingRef.current = false;
+      isListeningRef.current = false;
+      setIsMicOn(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Recognition error:", event.error);
+      isStartingRef.current = false;
+      isListeningRef.current = false;
+      setIsMicOn(false);
+
+      if (event.error === "network") {
+        setSpeechError("Speech recognition service unreachable (Network Error). If using Brave browser, VPN, or adblocker, please enable Google Speech Services or test in standard Google Chrome.");
+      } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setSpeechError("Microphone access blocked. Please enable microphone permission in your browser address bar.");
+      } else if (event.error === "audio-capture") {
+        setSpeechError("Microphone not detected. Please ensure your microphone is connected.");
+      } else if (event.error !== "no-speech") {
+        setSpeechError(`Speech recognition error: ${event.error}`);
+      }
+    };
+
     recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript;;
+      const transcript = event.results[event.results.length - 1][0].transcript;
       setAnswer(transcript);
-    }
+    };
+
     recognitionRef.current = recognition;
-  }, [])
+    console.log("Recognition initialized");
+  }, []);
 
   const startMic = () => {
-    if (recognitionRef.current && !isAIPlaying) {
-      try {
-        recognitionRef.current.start();
-        setIsMicOn(true);
-      } catch (err) {
-        console.error("Speech recognition error:", err);
+    if (!recognitionRef.current) {
+      console.log("Start request ignored: recognition not supported or not initialized");
+      return;
+    }
+    if (isListeningRef.current || isStartingRef.current) {
+      console.log("Start request ignored because already listening or starting");
+      return;
+    }
+    if (isAIPlaying) {
+      console.log("Start request ignored: AI is speaking");
+      return;
+    }
+    try {
+      console.log("Starting speech recognition...");
+      isStartingRef.current = true;
+      recognitionRef.current.start();
+    } catch (err) {
+      console.error("Speech recognition start error:", err);
+      isStartingRef.current = false;
+
+      // If recognition is still in stopping phase from previous turn, retry start after micro delay
+      if (err.name === 'InvalidStateError' || err.message?.includes('already started')) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+        setTimeout(() => {
+          try {
+            console.log("Retrying start speech recognition...");
+            isStartingRef.current = true;
+            recognitionRef.current.start();
+          } catch (retryErr) {
+            console.error("Retry start failed:", retryErr);
+            isStartingRef.current = false;
+            isListeningRef.current = false;
+            setIsMicOn(false);
+          }
+        }, 150);
+      } else {
+        isListeningRef.current = false;
+        setIsMicOn(false);
       }
     }
-  }
+  };
+
   const stopMic = () => {
+    isStartingRef.current = false;
+    isListeningRef.current = false;
+    setIsMicOn(false);
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsMicOn(false);
+      try {
+        console.log("Stopping speech recognition...");
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error("Speech recognition stop error:", err);
+      }
     }
-  }
+  };
+
   const toggleMic = () => {
-  if (isMicOn) {
-    stopMic();
-  } else {
-    startMic();
-  }
-}
+    console.log("Microphone button clicked");
+    if (isListeningRef.current || isStartingRef.current) {
+      stopMic();
+    } else {
+      startMic();
+    }
+  };
   useEffect(() => {
     if (!currentQuestion) return;
     setTimeLeft(currentQuestion.timeLimit || 60);
@@ -259,13 +342,19 @@ const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current.abort();
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore if already stopped
+        }
       }
       window.speechSynthesis.cancel();
-
     }
-  }, [])
+  }, []);
   return (
 
     <div className='min-h-screen 
@@ -360,11 +449,26 @@ const [timeLeft, setTimeLeft] = useState(questions?.[0]?.timeLimit || 60);
               className='w-full flex-1 mt-4 bg-gray-100 p-4 resize-none border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500'
             />
 
+            {speechError && (
+              <div className='mt-3 p-3 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl flex items-center justify-between shadow-sm'>
+                <span>⚠️ {speechError}</span>
+                <button onClick={() => setSpeechError("")} className='text-red-400 hover:text-red-700 font-bold ml-2 text-base'>✕</button>
+              </div>
+            )}
+
             {!feedback ? (<div className='flex items-center gap-4 mt-4'>
               <motion.button
                 onClick={toggleMic}
-                className='w-14 h-14 flex items-center justify-center rounded-full bg-black text-white'
-                whileTap={{ scale: 0.9 }}
+                disabled={isAIPlaying}
+                title={isAIPlaying ? "AI is speaking..." : isMicOn ? "Stop Microphone" : "Start Microphone"}
+                className={`w-14 h-14 flex items-center justify-center rounded-full transition-all duration-300 ${
+                  isAIPlaying
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-50'
+                    : isMicOn
+                    ? 'bg-red-600 text-white ring-4 ring-red-200 animate-pulse shadow-lg'
+                    : 'bg-black text-white hover:bg-gray-800'
+                }`}
+                whileTap={{ scale: isAIPlaying ? 1 : 0.9 }}
               >
                 {isMicOn ? <FaMicrophone size={20} /> : <FaMicrophoneSlash size={20} />}
               </motion.button>
